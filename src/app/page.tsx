@@ -5,7 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import NewsCard from '@/components/NewsCard';
+import LeagueCard from '@/components/LeagueCard';
+import SourceCard from '@/components/SourceCard';
 import ContextPanel from '@/components/ContextPanel';
+import FutbolPowerLoader from '@/components/FutbolPowerLoader';
+
+/* ── Types ── */
 
 interface Source {
   name: string;
@@ -38,23 +43,43 @@ interface SourceWithCount {
   _count: { articles: number };
 }
 
+interface LeagueWithTeams {
+  id: string;
+  name: string;
+  label: string;
+  country: string;
+  articleCount: number;
+  teams: { id: string; name: string; shortName: string | null; slug: string }[];
+}
+
+/* ── Card union for carousel ── */
+type CarouselItem =
+  | { type: 'news'; data: Article }
+  | { type: 'league'; data: LeagueWithTeams }
+  | { type: 'source'; data: { id: string; name: string; label: string; country: string; url: string; articleCount: number; recentArticles: Article[] } };
+
 export default function Home() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [sources, setSources] = useState<SourceWithCount[]>([]);
+  const [leagues, setLeagues] = useState<LeagueWithTeams[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCountry, setActiveCountry] = useState('all');
   const [activeSource, setActiveSource] = useState<string | null>(null);
   const [activeLeague, setActiveLeague] = useState<string | null>(null);
   const [totalArticles, setTotalArticles] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const feedRef = useRef<HTMLDivElement>(null);
 
-  // Fetch sources on mount
+  // Fetch sources + leagues on mount
   useEffect(() => {
     fetch('/api/sources')
       .then((res) => res.json())
-      .then((data) => {
-        if (data.success) setSources(data.sources);
-      })
+      .then((data) => { if (data.success) setSources(data.sources); })
+      .catch(console.error);
+
+    fetch('/api/leagues')
+      .then((res) => res.json())
+      .then((data) => { if (data.success) setLeagues(data.leagues); })
       .catch(console.error);
   }, []);
 
@@ -81,16 +106,29 @@ export default function Home() {
     }
   }, [activeCountry, activeSource, activeLeague]);
 
-  useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+  useEffect(() => { fetchArticles(); }, [fetchArticles]);
 
-  // Scroll feed to top when filters change
+  // Scroll feed to start when filters change
   useEffect(() => {
     if (feedRef.current) {
-      feedRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      feedRef.current.scrollTo({ left: 0, behavior: 'smooth' });
     }
+    setCurrentIndex(0);
   }, [activeCountry, activeSource, activeLeague]);
+
+  // Track scroll position for context panel sync
+  useEffect(() => {
+    const container = feedRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const cardWidth = container.offsetWidth;
+      if (cardWidth === 0) return;
+      const idx = Math.round(container.scrollLeft / cardWidth);
+      setCurrentIndex(idx);
+    };
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [articles]);
 
   function handleCountryChange(country: string) {
     setActiveCountry(country);
@@ -98,21 +136,60 @@ export default function Home() {
     setActiveLeague(null);
   }
 
+  // Build mixed carousel items: interleave leagues and sources among news
+  const carouselItems: CarouselItem[] = [];
+  if (articles.length > 0) {
+    const filteredLeagues = leagues.filter(
+      (l) => l.articleCount > 0 && (activeCountry === 'all' || l.country === activeCountry)
+    );
+    const filteredSources = sources
+      .filter((s) => s._count.articles > 0 && (activeCountry === 'all' || s.country === activeCountry))
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        label: s.label,
+        country: s.country,
+        url: s.url,
+        articleCount: s._count.articles,
+        recentArticles: articles.filter((a) => a.source.name === s.name).slice(0, 5),
+      }));
+
+    let leagueIdx = 0;
+    let sourceIdx = 0;
+
+    articles.forEach((article, i) => {
+      // Insert a league card every 4 articles
+      if (i > 0 && i % 4 === 0 && leagueIdx < filteredLeagues.length) {
+        carouselItems.push({ type: 'league', data: filteredLeagues[leagueIdx++] });
+      }
+      // Insert a source card every 7 articles
+      if (i > 0 && i % 7 === 0 && sourceIdx < filteredSources.length) {
+        carouselItems.push({ type: 'source', data: filteredSources[sourceIdx++] });
+      }
+      carouselItems.push({ type: 'news', data: article });
+    });
+  }
+
+  // Get current item for context panel
+  const currentItem = carouselItems[currentIndex] || null;
+  const currentArticle = currentItem?.type === 'news' ? currentItem.data : null;
+
   return (
-    <div className="h-screen flex flex-col overflow-hidden noise-overlay">
-      {/* Header */}
+    <div className="h-[100dvh] flex flex-col overflow-hidden noise-overlay">
+      {/* Header — fixed 80px */}
       <Header
         activeCountry={activeCountry}
         onCountryChange={handleCountryChange}
         totalArticles={totalArticles}
       />
 
-      {/* Main 3-Column Layout */}
-      <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[280px_1fr_320px]">
-        {/* Left Sidebar — hidden on mobile */}
+      {/* Main 3-Column Layout — offset for fixed header */}
+      <div className="flex-1 min-h-0 pt-20 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] overflow-hidden">
+        {/* Left Sidebar */}
         <div className="hidden lg:block">
           <Sidebar
             sources={sources}
+            leagues={leagues}
             activeSource={activeSource}
             onSourceChange={setActiveSource}
             activeLeague={activeLeague}
@@ -120,23 +197,11 @@ export default function Home() {
           />
         </div>
 
-        {/* Center Feed */}
+        {/* Center Feed — Horizontal Carousel */}
         <main className="relative overflow-hidden">
           {loading ? (
-            <div className="flex h-full items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative h-14 w-14">
-                  <div className="absolute inset-0 rounded-2xl bg-accent/20 animate-ping" />
-                  <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 border border-accent/20">
-                    <span className="text-2xl">⚽</span>
-                  </div>
-                </div>
-                <div className="text-sm font-medium text-cool-gray">
-                  Cargando noticias...
-                </div>
-              </div>
-            </div>
-          ) : articles.length === 0 ? (
+            <FutbolPowerLoader />
+          ) : carouselItems.length === 0 ? (
             /* Empty State */
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <div className="mb-6 relative">
@@ -155,36 +220,79 @@ export default function Home() {
               </code>
             </div>
           ) : (
-            /* Scroll-Snap News Feed */
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={`${activeCountry}-${activeSource}-${activeLeague}`}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                ref={feedRef}
-                className="snap-scroll-container h-full"
-              >
-                {articles.map((article, i) => (
-                  <NewsCard
-                    key={article.id}
-                    article={article}
-                    index={i}
-                    isFirst={i === 0}
+            <>
+              {/* Fade edges */}
+              <div className="feed-fade-left" />
+              <div className="feed-fade-right" />
+
+              {/* Horizontal Snap Carousel */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${activeCountry}-${activeSource}-${activeLeague}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  ref={feedRef}
+                  className="snap-x-container h-full"
+                >
+                  {carouselItems.map((item, i) => {
+                    if (item.type === 'league') {
+                      return (
+                        <LeagueCard
+                          key={`league-${item.data.id}`}
+                          league={item.data}
+                          index={i}
+                        />
+                      );
+                    }
+                    if (item.type === 'source') {
+                      return (
+                        <SourceCard
+                          key={`source-${item.data.id}`}
+                          source={item.data}
+                          index={i}
+                        />
+                      );
+                    }
+                    return (
+                      <NewsCard
+                        key={item.data.id}
+                        article={item.data}
+                        index={i}
+                        isFirst={i === 0}
+                      />
+                    );
+                  })}
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Carousel position indicator */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 rounded-full bg-[rgba(11,11,16,0.8)] backdrop-blur-md px-4 py-2 border border-white/5">
+                <span className="text-[10px] font-bold tabular-nums text-accent">
+                  {currentIndex + 1}
+                </span>
+                <div className="h-0.5 w-8 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-300"
+                    style={{ width: `${((currentIndex + 1) / carouselItems.length) * 100}%` }}
                   />
-                ))}
-              </motion.div>
-            </AnimatePresence>
+                </div>
+                <span className="text-[10px] tabular-nums text-[#6B7280]">
+                  {carouselItems.length}
+                </span>
+              </div>
+            </>
           )}
         </main>
 
-        {/* Right Context Panel — hidden on mobile */}
+        {/* Right Context Panel */}
         <div className="hidden lg:block">
           <ContextPanel
             articles={articles}
             sources={sources}
             totalArticles={totalArticles}
+            currentArticle={currentArticle}
           />
         </div>
       </div>

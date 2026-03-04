@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Public_Sans } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({
-  variable: '--font-geist-sans',
+const publicSans = Public_Sans({
+  variable: '--font-sans',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700', '800'],
+  weight: ['300', '400', '500', '600', '700', '800'],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="dark">
-      <body className={`${inter.variable} antialiased bg-obsidian text-bone`}>
+      <body className={`${publicSans.variable} antialiased bg-obsidian text-bone`}>
         {children}
       </body>
     </html>
