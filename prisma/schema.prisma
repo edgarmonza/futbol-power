@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// Fuentes de noticias (medios)
+// ============================================
+model Source {
+  id        String   @id @default(cuid())
+  name      String   @unique // "marca", "ole", "as"
+  label     String   // "Marca", "Olé", "AS"
+  country   String   // "es", "ar", "int"
+  url       String   // URL base del medio
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  apifyTaskId String? // ID del task en Apify
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  articles Article[]
+
+  @@map("sources")
+}
+
+// ============================================
+// Artículos / Noticias
+// ============================================
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?
+  content     String?  @db.Text
+  url         String   @unique // URL original del artículo
+  imageUrl    String?
+  author      String?
+  publishedAt DateTime?
+  scrapedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relaciones
+  sourceId String
+  source   Source @relation(fields: [sourceId], references: [id])
+
+  leagueId String?
+  league   League? @relation(fields: [leagueId], references: [id])
+
+  tags     ArticleTag[]
+  teams    ArticleTeam[]
+
+  @@index([sourceId])
+  @@index([leagueId])
+  @@index([publishedAt(sort: Desc)])
+  @@index([scrapedAt(sort: Desc)])
+  @@map("articles")
+}
+
+// ============================================
+// Ligas
+// ============================================
+model League {
+  id       String  @id @default(cuid())
+  name     String  @unique // "laliga", "liga-profesional"
+  label    String  // "LaLiga", "Liga Profesional Argentina"
+  country  String  // "es", "ar"
+  logoUrl  String?
+  apiId    String? // ID en API-Football u otra API
+  isActive Boolean @default(true)
+
+  articles Article[]
+  teams    Team[]
+
+  @@map("leagues")
+}
+
+// ============================================
+// Equipos
+// ============================================
+model Team {
+  id       String  @id @default(cuid())
+  name     String  // "Real Madrid", "Boca Juniors"
+  slug     String  @unique
+  shortName String? // "RMA", "BOC"
+  logoUrl  String?
+  country  String
+  apiId    String? // ID en API-Football
+
+  leagueId String?
+  league   League? @relation(fields: [leagueId], references: [id])
+
+  articles ArticleTeam[]
+
+  @@index([leagueId])
+  @@map("teams")
+}
+
+// ============================================
+// Tags / Categorías
+// ============================================
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique // "transferencias", "champions", "lesiones"
+
+  articles ArticleTag[]
+
+  @@map("tags")
+}
+
+// ============================================
+// Relaciones Many-to-Many
+// ============================================
+model ArticleTag {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@map("article_tags")
+}
+
+model ArticleTeam {
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  teamId    String
+  team      Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, teamId])
+  @@map("article_teams")
+}
