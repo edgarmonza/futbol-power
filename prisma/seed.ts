@@ -113,6 +113,62 @@ async function main() {
   }
   console.log(`  ✓ ${teams.length} teams seeded`);
 
+  // ---- Standings (2024-25 season - realistic data) ----
+  const allTeamsLaLiga = await prisma.team.findMany({ where: { leagueId: laliga?.id } });
+  const allTeamsArg = await prisma.team.findMany({ where: { leagueId: ligaArg?.id } });
+
+  // LaLiga 2024-25 realistic standings
+  const laligaStandings = [
+    { slug: 'fc-barcelona',    pos: 1,  p: 26, w: 19, d: 4,  l: 3,  gf: 62, ga: 25 },
+    { slug: 'real-madrid',     pos: 2,  p: 26, w: 17, d: 5,  l: 4,  gf: 55, ga: 24 },
+    { slug: 'atletico-madrid', pos: 3,  p: 26, w: 16, d: 6,  l: 4,  gf: 47, ga: 21 },
+    { slug: 'athletic-club',   pos: 4,  p: 26, w: 13, d: 7,  l: 6,  gf: 39, ga: 27 },
+    { slug: 'villarreal',      pos: 5,  p: 26, w: 13, d: 5,  l: 8,  gf: 45, ga: 36 },
+    { slug: 'real-betis',      pos: 6,  p: 26, w: 11, d: 8,  l: 7,  gf: 35, ga: 30 },
+    { slug: 'real-sociedad',   pos: 7,  p: 26, w: 10, d: 8,  l: 8,  gf: 30, ga: 28 },
+    { slug: 'girona',          pos: 8,  p: 26, w: 9,  d: 7,  l: 10, gf: 34, ga: 38 },
+    { slug: 'sevilla',         pos: 9,  p: 26, w: 8,  d: 8,  l: 10, gf: 28, ga: 33 },
+    { slug: 'valencia',        pos: 10, p: 26, w: 5,  d: 8,  l: 13, gf: 22, ga: 38 },
+  ];
+
+  for (const s of laligaStandings) {
+    const team = allTeamsLaLiga.find((t: { slug: string }) => t.slug === s.slug);
+    if (team && laliga) {
+      await prisma.standing.upsert({
+        where: { season_teamId_leagueId: { season: '2024-25', teamId: team.id, leagueId: laliga.id } },
+        update: { position: s.pos, played: s.p, won: s.w, drawn: s.d, lost: s.l, goalsFor: s.gf, goalsAgainst: s.ga, goalDiff: s.gf - s.ga, points: s.w * 3 + s.d },
+        create: { season: '2024-25', position: s.pos, played: s.p, won: s.w, drawn: s.d, lost: s.l, goalsFor: s.gf, goalsAgainst: s.ga, goalDiff: s.gf - s.ga, points: s.w * 3 + s.d, teamId: team.id, leagueId: laliga.id },
+      });
+    }
+  }
+  console.log(`  ✓ ${laligaStandings.length} LaLiga standings seeded`);
+
+  // Liga Profesional Argentina 2024-25 realistic standings
+  const argStandings = [
+    { slug: 'river-plate',       pos: 1,  p: 20, w: 13, d: 4,  l: 3,  gf: 35, ga: 15 },
+    { slug: 'racing-club',       pos: 2,  p: 20, w: 12, d: 3,  l: 5,  gf: 30, ga: 18 },
+    { slug: 'talleres',          pos: 3,  p: 20, w: 11, d: 5,  l: 4,  gf: 28, ga: 16 },
+    { slug: 'boca-juniors',      pos: 4,  p: 20, w: 10, d: 5,  l: 5,  gf: 27, ga: 19 },
+    { slug: 'huracan',           pos: 5,  p: 20, w: 10, d: 4,  l: 6,  gf: 25, ga: 20 },
+    { slug: 'estudiantes',       pos: 6,  p: 20, w: 9,  d: 5,  l: 6,  gf: 24, ga: 22 },
+    { slug: 'velez-sarsfield',   pos: 7,  p: 20, w: 8,  d: 6,  l: 6,  gf: 22, ga: 20 },
+    { slug: 'independiente',     pos: 8,  p: 20, w: 7,  d: 6,  l: 7,  gf: 20, ga: 21 },
+    { slug: 'san-lorenzo',       pos: 9,  p: 20, w: 5,  d: 7,  l: 8,  gf: 18, ga: 25 },
+    { slug: 'argentinos-juniors',pos: 10, p: 20, w: 4,  d: 5,  l: 11, gf: 15, ga: 28 },
+  ];
+
+  for (const s of argStandings) {
+    const team = allTeamsArg.find((t: { slug: string }) => t.slug === s.slug);
+    if (team && ligaArg) {
+      await prisma.standing.upsert({
+        where: { season_teamId_leagueId: { season: '2024-25', teamId: team.id, leagueId: ligaArg.id } },
+        update: { position: s.pos, played: s.p, won: s.w, drawn: s.d, lost: s.l, goalsFor: s.gf, goalsAgainst: s.ga, goalDiff: s.gf - s.ga, points: s.w * 3 + s.d },
+        create: { season: '2024-25', position: s.pos, played: s.p, won: s.w, drawn: s.d, lost: s.l, goalsFor: s.gf, goalsAgainst: s.ga, goalDiff: s.gf - s.ga, points: s.w * 3 + s.d, teamId: team.id, leagueId: ligaArg.id },
+      });
+    }
+  }
+  console.log(`  ✓ ${argStandings.length} Liga Profesional standings seeded`);
+
   console.log('\nSeed completed!');
 }
 

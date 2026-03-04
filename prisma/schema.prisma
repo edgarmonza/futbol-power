@@ -73,8 +73,9 @@ model League {
   apiId    String? // ID en API-Football u otra API
   isActive Boolean @default(true)
 
-  articles Article[]
-  teams    Team[]
+  articles  Article[]
+  teams     Team[]
+  standings Standing[]
 
   @@map("leagues")
 }
@@ -94,10 +95,37 @@ model Team {
   leagueId String?
   league   League? @relation(fields: [leagueId], references: [id])
 
-  articles ArticleTeam[]
+  articles  ArticleTeam[]
+  standings Standing[]
 
   @@index([leagueId])
   @@map("teams")
+}
+
+// ============================================
+// Tabla de Posiciones
+// ============================================
+model Standing {
+  id          String @id @default(cuid())
+  season      String // "2024-25"
+  position    Int
+  played      Int    @default(0)
+  won         Int    @default(0)
+  drawn       Int    @default(0)
+  lost        Int    @default(0)
+  goalsFor    Int    @default(0)
+  goalsAgainst Int   @default(0)
+  goalDiff    Int    @default(0)
+  points      Int    @default(0)
+
+  teamId   String
+  team     Team   @relation(fields: [teamId], references: [id])
+  leagueId String
+  league   League @relation(fields: [leagueId], references: [id])
+
+  @@unique([season, teamId, leagueId])
+  @@index([leagueId, season, position])
+  @@map("standings")
 }
 
 // ============================================

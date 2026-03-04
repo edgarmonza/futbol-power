@@ -52,6 +52,25 @@ interface LeagueWithTeams {
   teams: { id: string; name: string; shortName: string | null; slug: string }[];
 }
 
+interface StandingRow {
+  id: string;
+  position: number;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDiff: number;
+  points: number;
+  team: { id: string; name: string; shortName: string | null; slug: string };
+}
+
+interface LeagueStandings {
+  league: { id: string; name: string; label: string; country: string };
+  standings: StandingRow[];
+}
+
 /* ── Card union for carousel ── */
 type CarouselItem =
   | { type: 'news'; data: Article }
@@ -62,6 +81,7 @@ export default function Home() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [sources, setSources] = useState<SourceWithCount[]>([]);
   const [leagues, setLeagues] = useState<LeagueWithTeams[]>([]);
+  const [standings, setStandings] = useState<LeagueStandings[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCountry, setActiveCountry] = useState('all');
   const [activeSource, setActiveSource] = useState<string | null>(null);
@@ -70,7 +90,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const feedRef = useRef<HTMLDivElement>(null);
 
-  // Fetch sources + leagues on mount
+  // Fetch sources + leagues + standings on mount
   useEffect(() => {
     fetch('/api/sources')
       .then((res) => res.json())
@@ -80,6 +100,11 @@ export default function Home() {
     fetch('/api/leagues')
       .then((res) => res.json())
       .then((data) => { if (data.success) setLeagues(data.leagues); })
+      .catch(console.error);
+
+    fetch('/api/standings')
+      .then((res) => res.json())
+      .then((data) => { if (data.success) setStandings(data.data); })
       .catch(console.error);
   }, []);
 
@@ -136,7 +161,7 @@ export default function Home() {
     setActiveLeague(null);
   }
 
-  // Build mixed carousel items: interleave leagues and sources among news
+  // Build mixed carousel items
   const carouselItems: CarouselItem[] = [];
   if (articles.length > 0) {
     const filteredLeagues = leagues.filter(
@@ -158,11 +183,9 @@ export default function Home() {
     let sourceIdx = 0;
 
     articles.forEach((article, i) => {
-      // Insert a league card every 4 articles
       if (i > 0 && i % 4 === 0 && leagueIdx < filteredLeagues.length) {
         carouselItems.push({ type: 'league', data: filteredLeagues[leagueIdx++] });
       }
-      // Insert a source card every 7 articles
       if (i > 0 && i % 7 === 0 && sourceIdx < filteredSources.length) {
         carouselItems.push({ type: 'source', data: filteredSources[sourceIdx++] });
       }
@@ -174,27 +197,39 @@ export default function Home() {
   const currentItem = carouselItems[currentIndex] || null;
   const currentArticle = currentItem?.type === 'news' ? currentItem.data : null;
 
+  // Source options for header filters
+  const sourceOptions = sources.map((s) => ({
+    name: s.name,
+    label: s.label,
+    country: s.country,
+    articleCount: s._count.articles,
+  }));
+  const leagueOptions = leagues.map((l) => ({
+    name: l.name,
+    label: l.label,
+    country: l.country,
+  }));
+
   return (
-    <div className="h-[100dvh] flex flex-col overflow-hidden noise-overlay">
-      {/* Header — fixed 80px */}
+    <div className="h-[100dvh] flex flex-col overflow-hidden noise-overlay" style={{ '--header-h': '88px' } as React.CSSProperties}>
+      {/* Header — fixed ~88px (2 rows) */}
       <Header
         activeCountry={activeCountry}
         onCountryChange={handleCountryChange}
         totalArticles={totalArticles}
+        leagues={leagueOptions}
+        sources={sourceOptions}
+        activeLeague={activeLeague}
+        onLeagueChange={setActiveLeague}
+        activeSource={activeSource}
+        onSourceChange={setActiveSource}
       />
 
-      {/* Main 3-Column Layout — offset for fixed header */}
-      <div className="flex-1 min-h-0 pt-20 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] overflow-hidden">
-        {/* Left Sidebar */}
-        <div className="hidden lg:block">
-          <Sidebar
-            sources={sources}
-            leagues={leagues}
-            activeSource={activeSource}
-            onSourceChange={setActiveSource}
-            activeLeague={activeLeague}
-            onLeagueChange={setActiveLeague}
-          />
+      {/* Main 3-Column Layout */}
+      <div className="flex-1 min-h-0 pt-[88px] grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] overflow-hidden">
+        {/* Left Sidebar — Standings Tables */}
+        <div className="hidden lg:block border-r border-white/5">
+          <Sidebar standingsData={standings} />
         </div>
 
         {/* Center Feed — Horizontal Carousel */}
@@ -202,7 +237,6 @@ export default function Home() {
           {loading ? (
             <FutbolPowerLoader />
           ) : carouselItems.length === 0 ? (
-            /* Empty State */
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <div className="mb-6 relative">
                 <div className="absolute inset-0 rounded-3xl bg-accent/10 blur-2xl" />

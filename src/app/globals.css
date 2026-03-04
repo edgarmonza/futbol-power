@@ -182,6 +182,7 @@ body {
     scroll-snap-stop: always;
     flex-shrink: 0;
     width: 100%;
+    height: calc(100dvh - var(--header-h, 88px));
   }
 
   /* ── Vertical Snap Scroll (mobile feed) ── */
