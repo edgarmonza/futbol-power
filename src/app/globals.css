@@ -1,0 +1,313 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* ═══════════════════════════════════════════════════════════════
+     FUTBOL POWER — Premium Dark Theme
+     Adapted from Monza Cars Marketplace "Obsidian & Neon"
+     ═══════════════════════════════════════════════════════════════ */
+
+  --color-background: #0b0b10;
+  --color-foreground: #FFFCF7;
+
+  /* Surfaces */
+  --color-obsidian: #0b0b10;
+  --color-obsidian-card: #0F1012;
+  --color-surface: rgba(15, 16, 18, 0.9);
+
+  /* Typography */
+  --color-bone: #FFFCF7;
+  --color-cool-gray: #9CA3AF;
+  --color-deep-gray: #4B5563;
+
+  /* Accent — Emerald (Fútbol) */
+  --color-accent: #34D399;
+  --color-accent-light: #6EE7B7;
+  --color-accent-dim: rgba(52, 211, 153, 0.15);
+
+  /* Secondary accent — For highlights */
+  --color-amber: #FBBF24;
+  --color-red: #F87171;
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(52, 211, 153, 0.3);
+
+  /* Fonts */
+  --font-sans: var(--font-sans);
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* Radius */
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Base Layer
+   ═══════════════════════════════════════════════════════════════ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(52, 211, 153, 0.3);
+  color: #FFFCF7;
+}
+
+::-moz-selection {
+  background: rgba(52, 211, 153, 0.3);
+  color: #FFFCF7;
+}
+
+/* Scrollbar — thin, emerald-tinted */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.15);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.3);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(52, 211, 153, 0.15) transparent;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Utility Classes
+   ═══════════════════════════════════════════════════════════════ */
+
+@layer utilities {
+  /* Typography */
+  .text-bone { color: #FFFCF7; }
+  .text-cool-gray { color: #9CA3AF; }
+  .text-deep-gray { color: #4B5563; }
+
+  /* Gradient text — emerald shimmer */
+  .text-gradient {
+    background: linear-gradient(90deg, #34D399 0%, #6EE7B7 30%, #34D399 60%, #10B981 80%, #34D399 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: text-gradient-shimmer 8s ease-in-out infinite;
+  }
+
+  /* Glassmorphism card */
+  .glass-card {
+    background: rgba(15, 16, 18, 0.6);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02), 0 8px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  /* Accent glow */
+  .accent-glow {
+    position: relative;
+  }
+  .accent-glow::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 50%;
+    background: radial-gradient(80% 50% at 50% 0%, rgba(52, 211, 153, 0.12) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Noise overlay */
+  .noise-overlay::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.02;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  /* Monza-style label */
+  .fp-label {
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #6B7280;
+  }
+
+  /* Background utilities */
+  .bg-obsidian { background-color: #0b0b10; }
+  .bg-obsidian-card { background-color: #0F1012; }
+
+  /* ── Horizontal Snap Scroll (Monza-style carousel) ── */
+  .snap-x-container {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .snap-x-container::-webkit-scrollbar { display: none; }
+
+  .snap-x-item {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    flex-shrink: 0;
+    width: 100%;
+    height: calc(100dvh - var(--header-h, 88px));
+  }
+
+  /* ── Vertical Snap Scroll (mobile feed) ── */
+  .snap-y-container {
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    overflow-y: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .snap-y-container::-webkit-scrollbar { display: none; }
+
+  /* Legacy compat */
+  .snap-scroll-container {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .snap-scroll-container::-webkit-scrollbar { display: none; }
+  .snap-item {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  /* ── Fade edges for horizontal scroll ── */
+  .feed-fade-left {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 80px;
+    background: linear-gradient(to right, #0b0b10, transparent);
+    pointer-events: none;
+    z-index: 10;
+  }
+  .feed-fade-right {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: 80px;
+    background: linear-gradient(to left, #0b0b10, transparent);
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* No scrollbar */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* Live pulse */
+  .live-pulse {
+    position: relative;
+  }
+  .live-pulse::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: inherit;
+    background: rgba(52, 211, 153, 0.4);
+    animation: pulse-ring 2s ease-out infinite;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Animations
+   ═══════════════════════════════════════════════════════════════ */
+
+@keyframes text-gradient-shimmer {
+  0% { background-position: 0% center; }
+  50% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.15); opacity: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.animate-float { animation: float 6s ease-in-out infinite; }
+
+@keyframes grid-fade {
+  0%, 100% { opacity: 0.02; }
+  50% { opacity: 0.05; }
+}
+.animate-grid-fade { animation: grid-fade 4s ease-in-out infinite; }
+
+@keyframes infinity-worm {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -300; }
+}
+.animate-infinity-worm {
+  animation: infinity-worm 3s linear infinite;
+  will-change: stroke-dashoffset;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-blink { animation: blink 1.5s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════════════════════════════
+   Mobile Safe Areas
+   ═══════════════════════════════════════════════════════════════ */
+
+.pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.pt-safe { padding-top: max(1rem, env(safe-area-inset-top)); }
+
+@media (pointer: coarse) {
+  .touch-feedback { -webkit-tap-highlight-color: transparent; }
+  .touch-feedback:active { transform: scale(0.98); opacity: 0.9; }
+}
+
+.no-pull-refresh { overscroll-behavior: contain; }
