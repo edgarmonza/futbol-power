@@ -75,6 +75,14 @@ export async function ingestRssFeed(sourceKey: RssSourceKey): Promise<IngestionR
 
   result.total = feed.items.length;
 
+  // Fetch all existing URLs in a single query instead of one per article
+  const candidateUrls = feed.items.map(i => i.link).filter((u): u is string => !!u);
+  const existingArticles = await prisma.article.findMany({
+    where: { url: { in: candidateUrls } },
+    select: { url: true },
+  });
+  const existingUrls = new Set(existingArticles.map(a => a.url));
+
   for (const item of feed.items) {
     try {
       const url = item.link;
@@ -84,8 +92,7 @@ export async function ingestRssFeed(sourceKey: RssSourceKey): Promise<IngestionR
       if (!title || title.length < 10) { result.errors++; continue; }
 
       // Deduplicacion por URL
-      const existing = await prisma.article.findUnique({ where: { url } });
-      if (existing) { result.duplicates++; continue; }
+      if (existingUrls.has(url)) { result.duplicates++; continue; }
 
       const imageUrl = extractImageUrl(item as unknown as Record<string, unknown>);
       const excerpt = extractExcerpt(item.contentSnippet || item.content);
