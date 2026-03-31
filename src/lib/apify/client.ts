@@ -1,12 +1,9 @@
 import { ApifyClient } from 'apify-client';
 
-if (!process.env.APIFY_API_TOKEN) {
-  throw new Error('Missing APIFY_API_TOKEN environment variable');
-}
-
-export const apifyClient = new ApifyClient({
-  token: process.env.APIFY_API_TOKEN,
-});
+// Optional: only needed if using Apify scraping (not RSS)
+export const apifyClient = process.env.APIFY_API_TOKEN
+  ? new ApifyClient({ token: process.env.APIFY_API_TOKEN })
+  : null;
 
 // Source configurations for Apify scraping
 // includeGlobs filter for actual article URLs (with dates/slugs), not section pages
