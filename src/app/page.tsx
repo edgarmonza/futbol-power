@@ -9,6 +9,17 @@ import LeagueCard from '@/components/LeagueCard';
 import SourceCard from '@/components/SourceCard';
 import ContextPanel from '@/components/ContextPanel';
 import FutbolPowerLoader from '@/components/FutbolPowerLoader';
+import WorldCupCountrySelector from '@/components/WorldCupCountrySelector';
+import WorldCupBanner from '@/components/WorldCupBanner';
+
+interface WCTeam {
+  id: number;
+  name: string;
+  shortName: string;
+  tla: string;
+  crest: string;
+  area: { id: number; name: string; code: string; flag: string | null };
+}
 
 /* ── Types ── */
 
@@ -90,6 +101,25 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const feedRef = useRef<HTMLDivElement>(null);
 
+  // World Cup state — always null on server, hydrated from localStorage on client
+  const [wcTeam, setWcTeam] = useState<WCTeam | null>(null);
+  const [showSelector, setShowSelector] = useState(false);
+
+  // On mount: read localStorage and set WC state (avoids hydration mismatch)
+  useEffect(() => {
+    const saved = localStorage.getItem('wc_team');
+    if (!saved) {
+      setShowSelector(true);
+    } else if (saved !== 'skipped') {
+      const team = JSON.parse(saved) as WCTeam;
+      setWcTeam(team);
+      // Auto-apply news country filter
+      if (team.area.code === 'ESP') setActiveCountry('es');
+      else if (team.area.code === 'ARG') setActiveCountry('ar');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fetch sources + leagues + standings on mount
   useEffect(() => {
     fetch('/api/sources')
@@ -161,6 +191,36 @@ export default function Home() {
     setActiveLeague(null);
   }
 
+  // Map WC team area code → news source country filter
+  function wcTeamToNewsCountry(team: WCTeam): string {
+    const code = team.area.code;
+    if (code === 'ESP') return 'es';
+    if (code === 'ARG') return 'ar';
+    return 'all';
+  }
+
+  function handleWCSelect(team: WCTeam) {
+    setWcTeam(team);
+    setShowSelector(false);
+    localStorage.setItem('wc_team', JSON.stringify(team));
+    // Auto-filter news to the team's country
+    const newsCountry = wcTeamToNewsCountry(team);
+    setActiveCountry(newsCountry);
+    setActiveSource(null);
+    setActiveLeague(null);
+  }
+
+  function handleWCSkip() {
+    setShowSelector(false);
+    localStorage.setItem('wc_team', 'skipped');
+  }
+
+  function handleChangeTeam() {
+    localStorage.removeItem('wc_team');
+    setWcTeam(null);
+    setShowSelector(true);
+  }
+
   // Build mixed carousel items
   const carouselItems: CarouselItem[] = [];
   if (articles.length > 0) {
@@ -212,6 +272,12 @@ export default function Home() {
 
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden noise-overlay" style={{ '--header-h': '88px' } as React.CSSProperties}>
+      {/* World Cup Country Selector — full screen overlay on first visit */}
+      <AnimatePresence>
+        {showSelector && (
+          <WorldCupCountrySelector onSelect={handleWCSelect} onSkip={handleWCSkip} />
+        )}
+      </AnimatePresence>
       {/* Header — fixed ~88px (2 rows) */}
       <Header
         activeCountry={activeCountry}
@@ -225,8 +291,20 @@ export default function Home() {
         onSourceChange={setActiveSource}
       />
 
+      {/* World Cup Banner — shows next/current match for selected team */}
+      {wcTeam && (
+        <div className="pt-[88px]">
+          <WorldCupBanner
+            teamId={wcTeam.id}
+            teamName={wcTeam.name}
+            teamCrest={wcTeam.crest}
+            onChangeteam={handleChangeTeam}
+          />
+        </div>
+      )}
+
       {/* Main 3-Column Layout */}
-      <div className="flex-1 min-h-0 pt-[88px] grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] overflow-hidden">
+      <div className={`flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[280px_1fr_320px] overflow-hidden ${wcTeam ? '' : 'pt-[88px]'}`}>
         {/* Left Sidebar — Standings Tables */}
         <div className="hidden lg:block border-r border-white/5">
           <Sidebar standingsData={standings} />
