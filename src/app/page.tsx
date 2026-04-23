@@ -101,16 +101,24 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const feedRef = useRef<HTMLDivElement>(null);
 
-  // World Cup state
-  const [wcTeam, setWcTeam] = useState<WCTeam | null>(() => {
-    if (typeof window === 'undefined') return null;
+  // World Cup state — always null on server, hydrated from localStorage on client
+  const [wcTeam, setWcTeam] = useState<WCTeam | null>(null);
+  const [showSelector, setShowSelector] = useState(false);
+
+  // On mount: read localStorage and set WC state (avoids hydration mismatch)
+  useEffect(() => {
     const saved = localStorage.getItem('wc_team');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [showSelector, setShowSelector] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('wc_team');
-  });
+    if (!saved) {
+      setShowSelector(true);
+    } else if (saved !== 'skipped') {
+      const team = JSON.parse(saved) as WCTeam;
+      setWcTeam(team);
+      // Auto-apply news country filter
+      if (team.area.code === 'ESP') setActiveCountry('es');
+      else if (team.area.code === 'ARG') setActiveCountry('ar');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Fetch sources + leagues + standings on mount
   useEffect(() => {
@@ -183,10 +191,23 @@ export default function Home() {
     setActiveLeague(null);
   }
 
+  // Map WC team area code → news source country filter
+  function wcTeamToNewsCountry(team: WCTeam): string {
+    const code = team.area.code;
+    if (code === 'ESP') return 'es';
+    if (code === 'ARG') return 'ar';
+    return 'all';
+  }
+
   function handleWCSelect(team: WCTeam) {
     setWcTeam(team);
     setShowSelector(false);
     localStorage.setItem('wc_team', JSON.stringify(team));
+    // Auto-filter news to the team's country
+    const newsCountry = wcTeamToNewsCountry(team);
+    setActiveCountry(newsCountry);
+    setActiveSource(null);
+    setActiveLeague(null);
   }
 
   function handleWCSkip() {
